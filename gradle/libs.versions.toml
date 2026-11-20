@@ -1,0 +1,73 @@
+[versions]
+agp = "8.9.1"
+kotlin = "2.1.20"
+ksp = "2.1.20-2.0.1"
+hilt = "2.56"
+composeBom = "2025.05.00"
+room = "2.7.1"
+firebaseBom = "33.13.0"
+playLocation = "21.3.0"
+playMaps = "19.2.0"
+mapsCompose = "6.6.0"
+work = "2.10.1"
+navCompose = "2.9.0"
+hiltNav = "1.2.0"
+datastore = "1.1.7"
+biometric = "1.1.0"
+camerax = "1.4.2"
+coroutines = "1.10.2"
+lifecycle = "2.9.0"
+activityCompose = "1.10.1"
+googleServices = "4.4.2"
+
+
+guava = "33.4.0-android"
+concurrentFutures = "1.2.0"
+[libraries]
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-icons = { module = "androidx.compose.material:material-icons-extended" }
+activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+lifecycle-runtime = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+nav-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navCompose" }
+hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
+hilt-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt" }
+hilt-nav = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNav" }
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-auth = { module = "com.google.firebase:firebase-auth" }
+firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
+play-location = { module = "com.google.android.gms:play-services-location", version.ref = "playLocation" }
+play-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "playMaps" }
+maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "mapsCompose" }
+work = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
+datastore = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
+camerax-core = { module = "androidx.camera:camera-core", version.ref = "camerax" }
+camerax-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
+camerax-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
+camerax-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
+coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+coroutines-play = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "coroutines" }
+coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+junit = { module = "junit:junit", version = "4.13.2" }
+
+firebase-appcheck-playintegrity = { module = "com.google.firebase:firebase-appcheck-playintegrity" }
+firebase-appcheck-debug = { module = "com.google.firebase:firebase-appcheck-debug" }
+
+
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
+concurrent-futures = { module = "androidx.concurrent:concurrent-futures-ktx", version.ref = "concurrentFutures" }
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

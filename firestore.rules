@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function pairing(childUid) {
+      return get(/databases/$(database)/documents/pairings/$(childUid)).data;
+    }
+    function isActiveParentOf(childUid) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/pairings/$(childUid))
+        && pairing(childUid).parentUid == request.auth.uid
+        && pairing(childUid).status == 'ACTIVE';
+    }
+    function isChild(childUid) { return signedIn() && request.auth.uid == childUid; }
+
+    // One-time pairing codes: parent creates; any signed-in user can read a specific code to redeem it.
+    match /pairingCodes/{code} {
+      allow create: if signedIn() && request.resource.data.parentUid == request.auth.uid
+                    && request.resource.data.expiresAt <= request.time.toMillis() + 900000;
+      allow get: if signedIn();
+      allow list: if false;
+      allow delete: if signedIn() && (resource.data.parentUid == request.auth.uid
+                    || exists(/databases/$(database)/documents/pairings/$(request.auth.uid)));
+    }
+
+    // Pairing record. Child creates it (explicit approval in app) using a valid, unexpired code.
+    match /pairings/{childUid} {
+      allow create: if isChild(childUid)
+        && request.resource.data.childUid == request.auth.uid
+        && get(/databases/$(database)/documents/pairingCodes/$(request.resource.data.code)).data.parentUid
+             == request.resource.data.parentUid
+        && get(/databases/$(database)/documents/pairingCodes/$(request.resource.data.code)).data.expiresAt
+             > request.time.toMillis()
+        && request.resource.data.parentAgreementKey == ''
+        && request.resource.data.parentSigningKey == '';
+      allow read: if isChild(childUid) || (signedIn() && resource.data.parentUid == request.auth.uid);
+      allow list: if signedIn();   // queries are still filtered by parentUid == auth.uid in the app
+      allow delete: if isChild(childUid) || (signedIn() && resource.data.parentUid == request.auth.uid);
+      // Each side may publish/rotate ONLY its own two public keys.
+      allow update: if (isChild(childUid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['childAgreementKey', 'childSigningKey']))
+        || (signedIn() && resource.data.parentUid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parentAgreementKey', 'parentSigningKey']));
+    }
+
+    match /devices/{childUid} {
+      match /commands/{id} {
+        allow create: if isActiveParentOf(childUid)
+          && request.resource.data.requestedBy == request.auth.uid
+          && request.resource.data.id == id
+          && request.resource.data.expiresAt <= request.time.toMillis() + 300000;
+        allow read: if isActiveParentOf(childUid) || isChild(childUid);
+        allow list: if isChild(childUid);
+        // Child may only change status; nothing else.
+        allow update: if isChild(childUid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+        allow delete: if isActiveParentOf(childUid) || isChild(childUid);
+      }
+      match /results/{id} {
+        allow create, update: if isChild(childUid);
+        allow read, delete: if isActiveParentOf(childUid) || isChild(childUid);
+      }
+      match /geofences/{id} {
+        allow read: if isActiveParentOf(childUid) || isChild(childUid);
+        allow create, update: if isActiveParentOf(childUid)
+          && request.resource.data.id == id
+          && request.resource.data.shape in ['CIRCLE', 'POLYGON']
+          && request.resource.data.zone in ['SAFE', 'RESTRICTED']
+          && request.resource.data.points.size() <= 50;
+        allow delete: if isActiveParentOf(childUid) || isChild(childUid); // child wipes zones when the pairing ends
+      }
+      match /status/{id} {
+        allow read: if isActiveParentOf(childUid) || isChild(childUid);
+        allow create, update: if isChild(childUid)
+          && request.resource.data.keys().hasOnly(['sharing', 'issues', 'battery', 'charging', 'powerSave', 'standby', 'updatedAt'])
+          && request.resource.data.issues.size() <= 12;
+        allow delete: if isChild(childUid);
+      }
+      match /alerts/{id} {
+        allow create: if isChild(childUid) && request.resource.data.id == id;
+        allow read, delete: if isActiveParentOf(childUid) || isChild(childUid);
+      }
+      match /captureRequests/{id} {
+        allow create: if isActiveParentOf(childUid)
+          && request.resource.data.requestId == id
+          && request.resource.data.type in ['CAMERA', 'SCREENSHOT']
+          && request.resource.data.status == 'REQUESTED'
+          && request.resource.data.expiresAt <= request.time.toMillis() + 600000;
+        allow read: if isActiveParentOf(childUid) || isChild(childUid);
+        allow update: if (isChild(childUid) || isActiveParentOf(childUid))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+        allow delete: if isActiveParentOf(childUid) || isChild(childUid);
+      }
+      match /captureTransfers/{id} {
+        allow create: if isChild(childUid)
+          && request.resource.data.transferId == id
+          && request.resource.data.encrypted == true
+          && request.resource.data.chunkCount >= 1 && request.resource.data.chunkCount <= 64
+          && request.resource.data.expiresAt <= request.time.toMillis() + 600000;
+        allow read: if isActiveParentOf(childUid) || isChild(childUid);
+        allow update: if (isChild(childUid) || isActiveParentOf(childUid))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+        allow delete: if isActiveParentOf(childUid) || isChild(childUid);
+        match /chunks/{c} {
+          allow create: if isChild(childUid) && request.resource.data.data.size() <= 71680; // 70 KiB
+          allow read, delete: if isActiveParentOf(childUid) || isChild(childUid);
+        }
+      }
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "131187577936",
+    "project_id": "safe-we",
+    "storage_bucket": "safe-we.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:131187577936:android:f479a2af07a7b68aa42d55",
+        "android_client_info": {
+          "package_name": "com.safewe"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "131187577936-7dsoeo3s7st0k3248ubjj2c03ks2n9uf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCsfdFa9wqDxG5ZyNEfxPnV_aCLjCoWVK8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "131187577936-7dsoeo3s7st0k3248ubjj2c03ks2n9uf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
