@@ -6,7 +6,7 @@ object CaptureLabels {
         TransferStatus.REQUESTED -> "Waiting for your child's device…"
         TransferStatus.WAITING_FOR_SESSION ->
             if (type == CaptureType.SCREENSHOT) "Waiting for your child to start screen sharing…"
-            else "Waiting for your child to open the camera screen…"
+            else "Waiting for your child to start camera sharing…"
         TransferStatus.CAPTURING -> if (type == CaptureType.SCREENSHOT) "Capturing the screen…" else "Taking the photo…"
         TransferStatus.COMPRESSING -> "Preparing the image…"
         TransferStatus.UPLOADING, TransferStatus.READY -> "Receiving the image…"

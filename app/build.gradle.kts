@@ -49,6 +49,7 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.runtime)
+    implementation(libs.lifecycle.service)
     implementation(libs.lifecycle.viewmodel)
     implementation(libs.nav.compose)
 

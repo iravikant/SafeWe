@@ -69,6 +69,13 @@ fun ChildShell(
         if (r.resultCode == android.app.Activity.RESULT_OK && d != null) ScreenShareService.start(ctx, r.resultCode, d)
     }
 
+    val startProjection = {
+        projectionLauncher.launch(ctx.getSystemService(android.media.projection.MediaProjectionManager::class.java).createScreenCaptureIntent())
+    }
+    val screenNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted && ScreenShareService.noticesEnabled(ctx)) startProjection()
+    }
+
     val toggleSharing: () -> Unit = {
         if (sharing) { LocationService.stop(ctx); sharing = false }
         else {
@@ -77,10 +84,15 @@ fun ChildShell(
         }
     }
     val toggleScreen: () -> Unit = {
-        if (screenOn) ScreenShareService.stop(ctx)
-        else {
-            if (Build.VERSION.SDK_INT >= 33) notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            projectionLauncher.launch(ctx.getSystemService(android.media.projection.MediaProjectionManager::class.java).createScreenCaptureIntent())
+        when {
+            screenOn -> ScreenShareService.stop(ctx)
+            ScreenShareService.noticesEnabled(ctx) -> startProjection()
+            Build.VERSION.SDK_INT >= 33 &&
+                androidx.core.content.ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED ->
+                screenNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+            else -> ctx.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName))
         }
     }
     val openUsageSettings: () -> Unit = { ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
@@ -177,11 +189,11 @@ private fun HomeTab(
 
         SectionLabel("FEATURES")
         FeatureRow(
-            Icons.Filled.PhotoCamera, "Camera session", "Let your parent ask for a photo while the camera screen is open. You get a countdown and can cancel.",
+            Icons.Filled.PhotoCamera, "Camera sharing", "Allow photo requests while sharing is on, even outside SafeWe.",
             enabled = paired, onClick = onOpenCamera, trailing = { Icon(Icons.Filled.ChevronRight, null) }
         )
         FeatureRow(
-            Icons.Filled.Smartphone, "Screen sharing", "Let your parent ask for a screenshot. You get a notification with a Cancel button every time.",
+            Icons.Filled.Smartphone, "Screen sharing", "Allow your paired parent to request screenshots. Stop sharing anytime from the ongoing notification.",
             enabled = paired, onClick = toggleScreen, trailing = { StatusPill(if (screenOn) "On" else "Off", screenOn) }
         )
         screenMsg?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.tertiary) }
@@ -233,8 +245,8 @@ private fun PrivacyTab(
         SectionLabel("WHAT YOUR PARENT CAN SEE")
         FeatureRow(Icons.Filled.LocationOn, "Your location", "Only when you ask for it by turning sharing on, and your parent asks.", trailing = { StatusPill(if (paired && sharing) "On" else "Off", paired && sharing) })
         FeatureRow(Icons.Filled.BarChart, "App usage", "Time per app, per day. Top 10 apps.", trailing = { StatusPill(if (paired && usageOn) "On" else "Off", paired && usageOn) })
-        FeatureRow(Icons.Filled.Smartphone, "Screenshots", "Only during screen sharing, with a Cancel button each time.", trailing = { StatusPill(if (paired && screenOn) "On" else "Off", paired && screenOn) })
-        FeatureRow(Icons.Filled.PhotoCamera, "Photos", "Only while your camera screen is open, with a countdown.")
+        FeatureRow(Icons.Filled.Smartphone, "Screenshots", "Only during screen sharing. The ongoing notification shows capture activity.", trailing = { StatusPill(if (paired && screenOn) "On" else "Off", paired && screenOn) })
+        FeatureRow(Icons.Filled.PhotoCamera, "Photos", "Requires camera sharing to be on. You can stop it from the notification.")
         FeatureRow(Icons.Filled.Lock, "Private space and encrypted files", "Never. Nobody but you can open them.", trailing = { StatusPill("Never shared", true) })
 
         if (paired) {

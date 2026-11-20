@@ -29,8 +29,8 @@ import javax.inject.Singleton
 
 /**
  * Receives parent capture requests, verifies them (signature, expiry, replay) and queues the valid ones.
- * Camera requests are NEVER executed here: they wait until the child has a visible camera session open.
- * If none is open, the child gets a notification and must tap it. Nothing is launched in the background.
+ * Camera requests wait for a child-started camera sharing service. When sharing is off,
+ * a notification opens the sharing controls.
  */
 @Singleton
 class CaptureCoordinator @Inject constructor(
@@ -72,7 +72,7 @@ class CaptureCoordinator @Inject constructor(
         }
     }
 
-    /** Camera session (visible camera screen) opened / closed. */
+    /** Camera sharing service started or stopped. */
     fun setSessionActive(active: Boolean) {
         _sessionActive.value = active
         if (active) cancelNotification() else notifyIfPending()
@@ -124,7 +124,7 @@ class CaptureCoordinator @Inject constructor(
         val n = NotificationCompat.Builder(ctx, SafeWeApp.REQUEST_CHANNEL)
             .setSmallIcon(android.R.drawable.ic_menu_camera)
             .setContentTitle("Your parent asked for a photo")
-            .setContentText("Tap to open the camera screen. You can decline there.")
+            .setContentText("Tap to open SafeWe and turn on camera sharing.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(open)

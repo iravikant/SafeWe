@@ -197,6 +197,7 @@ class LocationService : Service() {
         val uid = auth.uid
         SharingPrefs.set(this, false)
         com.safewe.usage.UsageWorker.cancel(this)
+        com.safewe.camera.CameraSessionService.stop(this)
         com.safewe.screen.ScreenShareService.stop(this)
         captures.clear()
         scope.launch(NonCancellable) {

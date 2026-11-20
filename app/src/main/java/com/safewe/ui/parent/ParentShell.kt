@@ -138,7 +138,7 @@ private fun FamilyTab(st: ParentState, child: Pairing?, vm: ParentViewModel, onO
             Text(if (cap.busy) cap.status ?: "Working…" else "Waiting for your child's phone…", style = MaterialTheme.typography.bodyMedium)
         } else {
             Text(
-                "Requests work while SafeWe is running on your child's phone. They always see a notice and can cancel photo and screenshot requests.",
+                "Photos and screenshots require the corresponding sharing session on your child's phone.",
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary
             )
         }

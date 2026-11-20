@@ -74,6 +74,7 @@ class ChildViewModel @Inject constructor(
     fun revoke() = viewModelScope.launch {
         runCatching { repo.revoke() }
         UsageWorker.cancel(app)
+        com.safewe.camera.CameraSessionService.stop(app)
         com.safewe.screen.ScreenShareService.stop(app) // monitoring ends with the pairing
         usage.clear() // paired data is removed from this device when monitoring ends
     }

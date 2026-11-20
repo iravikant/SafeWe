@@ -1,6 +1,8 @@
 package com.safewe.ui.parent
 
 import android.graphics.BitmapFactory
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -13,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -20,7 +23,10 @@ import androidx.lifecycle.viewModelScope
 import com.safewe.data.remote.Pairing
 import com.safewe.transfer.*
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
@@ -28,7 +34,8 @@ import javax.inject.Inject
 data class CaptureUi(
     val busy: Boolean = false,
     val status: String? = null,
-    val image: ImageBitmap? = null,   // plaintext exists only in memory and is dropped on dismiss
+    val image: ImageBitmap? = null,
+    val preview: ReceivedPreview? = null,
     val error: String? = null
 )
 
@@ -66,10 +73,10 @@ class CaptureViewModel @Inject constructor(private val transfers: FirestorePrevi
                     val bmp = BitmapFactory.decodeByteArray(received.bytes, 0, received.bytes.size)
                         ?: error("The image could not be read")
                     // (Black areas are normal for protected content such as banking apps.)
-                    _s.value = CaptureUi(image = bmp.asImageBitmap())
+                    _s.value = CaptureUi(image = bmp.asImageBitmap(), preview = received)
                 }
                 is Outcome.Stopped -> _s.value = CaptureUi(error = CaptureLabels.parent(outcome.status, type))
-                null -> _s.value = CaptureUi(error = if (type == CaptureType.SCREENSHOT) "No response. Screen sharing may not be on." else "No response. The child may not have the camera screen open.")
+                null -> _s.value = CaptureUi(error = if (type == CaptureType.SCREENSHOT) "No response. Screen sharing may not be on." else "No response. Camera sharing may be off.")
             }
         } catch (e: kotlinx.coroutines.CancellationException) { throw e
         } catch (e: Exception) {
@@ -104,27 +111,66 @@ fun CaptureSection(child: Pairing, vm: CaptureViewModel = hiltViewModel()) {
             }
         } else if (st.image == null && st.error == null) {
             Text(
-                "Your child sees a notice and can cancel each request. Photos need their camera screen open; screenshots need " +
+                "Photos require camera sharing. Screenshots require " +
                     "screen sharing on. Protected content (like banking apps) appears black.",
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary
             )
         }
         st.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
-        st.image?.let {
-            Image(it, "Image from your child's device", Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small), contentScale = ContentScale.FillWidth)
-            TextButton(onClick = vm::dismiss) { Text("Dismiss and delete") }
-        }
+        CaptureResult(st.copy(error = null), vm::dismiss)
     }
 }
 
-/** Shows the outcome of a photo/screenshot request: an error, or the decrypted image with a delete button. */
 @Composable
 fun CaptureResult(st: CaptureUi, onDismiss: () -> Unit) {
     st.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
-    st.image?.let {
+    val image = st.image ?: return
+    val preview = st.preview ?: return
+    key(preview.requestId) {
+        val resolver = LocalContext.current.contentResolver
+        val scope = rememberCoroutineScope()
+        val extension = if (preview.mime == "image/webp") "webp" else "jpg"
+        val label = if (preview.type == CaptureType.SCREENSHOT) "screenshot" else "photo"
+        val contract = remember(preview.mime) { ActivityResultContracts.CreateDocument(preview.mime) }
+        var saving by remember { mutableStateOf(false) }
+        var savedMessage by remember { mutableStateOf<String?>(null) }
+        var saveFailed by remember { mutableStateOf(false) }
+        val download = rememberLauncherForActivityResult(contract) { uri ->
+            if (uri != null) {
+                saving = true
+                savedMessage = null
+                scope.launch {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            val output = resolver.openOutputStream(uri, "wt")
+                                ?: error("Could not open the destination")
+                            output.use { it.write(preview.bytes) }
+                        }
+                        saveFailed = false
+                        savedMessage = "Saved to the selected location."
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        saveFailed = true
+                        savedMessage = "Could not save the image."
+                    } finally {
+                        saving = false
+                    }
+                }
+            }
+        }
         com.safewe.ui.SectionCard {
-            Image(it, "Image from your child's device", Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small), contentScale = ContentScale.FillWidth)
-            TextButton(onClick = onDismiss) { Text("Dismiss and delete") }
+            Image(image, "Received $label", Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small), contentScale = ContentScale.FillWidth)
+            Button(
+                onClick = { download.launch("SafeWe-$label-${System.currentTimeMillis()}.$extension") },
+                enabled = !saving
+            ) {
+                Text(if (saving) "Saving…" else "Download $label")
+            }
+            savedMessage?.let {
+                Text(it, color = if (saveFailed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+            }
+            TextButton(onClick = onDismiss, enabled = !saving) { Text("Dismiss preview") }
         }
     }
 }
