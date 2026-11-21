@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.safewe.data.AppRole
 import com.safewe.data.remote.DeviceStatus
 import com.safewe.data.remote.GeofenceAlert
 import com.safewe.data.remote.GeofenceRepository
@@ -34,6 +35,9 @@ import com.safewe.health.PresenceRules
 import com.safewe.security.SafetyCode
 import com.safewe.transfer.CaptureType
 import com.safewe.ui.*
+import com.safewe.ui.profile.AccountGreeting
+import com.safewe.ui.profile.PrivateHub
+import com.safewe.ui.profile.ProfileTab
 import com.safewe.ui.theme.Brand
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
@@ -54,10 +58,11 @@ private fun nameOf(st: ParentState, c: Pairing): String =
 
 private data class Tile(val icon: ImageVector, val label: String, val enabled: Boolean, val onClick: () -> Unit)
 
-/** Parent home: Family (actions), Activity (zone alerts), Settings (devices, usage budget, account). */
+/** Parent home: Family, Activity, Private (vault + file encryption), Settings (devices, usage budget), Profile. */
 @Composable
 fun ParentShell(
     onOpenZones: (String) -> Unit, onOpenUsage: (String) -> Unit, onSwitchRole: () -> Unit, onSignOut: () -> Unit,
+    onOpenVault: () -> Unit, onOpenFiles: () -> Unit,
     vm: ParentViewModel = hiltViewModel()
 ) {
     val st by vm.state.collectAsState()
@@ -68,7 +73,10 @@ fun ParentShell(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         bottomBar = {
             SafeWeNavBar(
-                listOf(NavItem("Family", Icons.Filled.Home), NavItem("Activity", Icons.Filled.Notifications), NavItem("Settings", Icons.Filled.Settings)),
+                listOf(
+                    NavItem("Family", Icons.Filled.Home), NavItem("Activity", Icons.Filled.Notifications), NavItem("Private", Icons.Filled.Lock),
+                    NavItem("Settings", Icons.Filled.Settings), NavItem("Profile", Icons.Filled.Person)
+                ),
                 selected = tab, onSelect = { tab = it }
             )
         }
@@ -76,9 +84,11 @@ fun ParentShell(
         Box(Modifier.padding(pad).fillMaxSize()) {
             Crossfade(tab, label = "parent-tab") { t ->
                 when (t) {
-                    0 -> FamilyTab(st, child, vm, onOpenZones, onOpenUsage)
+                    0 -> FamilyTab(st, child, vm, onOpenZones, onOpenUsage) { tab = 4 }
                     1 -> ActivityTab(st, child)
-                    else -> SettingsTab(st, vm, onSwitchRole, onSignOut)
+                    2 -> PrivateHub(AppRole.PARENT, onOpenVault, onOpenFiles)
+                    3 -> SettingsTab(st, vm)
+                    else -> ProfileTab(AppRole.PARENT, onSwitchRole, onSignOut, onOpenVault, onOpenFiles)
                 }
             }
         }
@@ -88,7 +98,10 @@ fun ParentShell(
 // ============================================================ Family
 
 @Composable
-private fun FamilyTab(st: ParentState, child: Pairing?, vm: ParentViewModel, onOpenZones: (String) -> Unit, onOpenUsage: (String) -> Unit) {
+private fun FamilyTab(
+    st: ParentState, child: Pairing?, vm: ParentViewModel, onOpenZones: (String) -> Unit, onOpenUsage: (String) -> Unit,
+    onOpenProfile: () -> Unit
+) {
     val capVm: CaptureViewModel = hiltViewModel()
     val cap by capVm.state.collectAsState()
 
@@ -96,7 +109,7 @@ private fun FamilyTab(st: ParentState, child: Pairing?, vm: ParentViewModel, onO
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        ScreenHeader("Family", "Stay connected, with everyone's consent")
+        AccountGreeting("Stay connected, with everyone's consent", onOpenProfile)
 
         if (child == null) {
             EmptyState(Icons.Filled.PhoneAndroid, "Add your child's phone", "Create a one-time code, then enter it in SafeWe on their phone. They approve it before anything is shared.")
@@ -230,7 +243,7 @@ private fun ActivityTab(st: ParentState, child: Pairing?) {
 // ============================================================ Settings
 
 @Composable
-private fun SettingsTab(st: ParentState, vm: ParentViewModel, onSwitchRole: () -> Unit, onSignOut: () -> Unit) {
+private fun SettingsTab(st: ParentState, vm: ParentViewModel) {
     var renaming by remember { mutableStateOf<Pairing?>(null) }
     var unpairing by remember { mutableStateOf<Pairing?>(null) }
 
@@ -238,7 +251,7 @@ private fun SettingsTab(st: ParentState, vm: ParentViewModel, onSwitchRole: () -
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        ScreenHeader("Settings", "Devices, usage and account")
+        ScreenHeader("Settings", "Devices and cloud usage")
 
         SectionLabel("DEVICES")
         AddDeviceCard(st, vm)
@@ -256,11 +269,6 @@ private fun SettingsTab(st: ParentState, vm: ParentViewModel, onSwitchRole: () -
         SectionLabel("CLOUD USAGE")
         QuotaCard()
 
-        SectionLabel("ACCOUNT")
-        SectionCard {
-            OutlinedButton(onSwitchRole, Modifier.fillMaxWidth()) { Text("Switch to child mode on this phone") }
-            OutlinedButton(onSignOut, Modifier.fillMaxWidth()) { Text("Sign out") }
-        }
         SectionCard {
             Text("How SafeWe treats your family", style = MaterialTheme.typography.titleMedium)
             Text(

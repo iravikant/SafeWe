@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,6 +33,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -95,8 +97,10 @@ fun GradientCard(
 }
 
 @Composable
-fun SectionCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) =
-    GradientCard(modifier, content = content)
+fun SectionCard(
+    modifier: Modifier = Modifier, contentPadding: PaddingValues = PaddingValues(20.dp),
+    content: @Composable ColumnScope.() -> Unit
+) = GradientCard(modifier, contentPadding = contentPadding, content = content)
 
 /** Large black-to-purple card for the single most important message on a screen. Content is white. */
 @Composable
@@ -119,14 +123,14 @@ fun HeroCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() 
 // ============================================================ badges
 
 @Composable
-fun IconBadge(icon: ImageVector, tint: Color = MaterialTheme.colorScheme.primary) {
-    val shape = RoundedCornerShape(14.dp)
+fun IconBadge(icon: ImageVector, tint: Color = MaterialTheme.colorScheme.primary, size: Dp = 44.dp) {
+    val shape = RoundedCornerShape(if (size < 40.dp) 12.dp else 14.dp)
     Box(
-        Modifier.size(44.dp).clip(shape)
+        Modifier.size(size).clip(shape)
             .background(Brush.linearGradient(listOf(tint.copy(alpha = 0.28f), tint.copy(alpha = 0.08f))))
             .border(1.dp, tint.copy(alpha = 0.25f), shape),
         contentAlignment = Alignment.Center
-    ) { Icon(icon, contentDescription = null, tint = tint) }
+    ) { Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(if (size < 40.dp) 20.dp else 24.dp)) }
 }
 
 /** Solid purple-gradient badge with a white icon (quick-action tiles). */
@@ -334,5 +338,85 @@ fun SafeWeNavBar(items: List<NavItem>, selected: Int, onSelect: (Int) -> Unit) {
                 )
             )
         }
+    }
+}
+
+// ============================================================ identity
+
+fun greetingNow(): String {
+    val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    return when { h < 12 -> "Good morning"; h < 17 -> "Good afternoon"; else -> "Good evening" }
+}
+
+/** "jane.doe@mail.com" -> "Jane.doe". Falls back to a neutral label. */
+fun displayNameOf(email: String?): String =
+    email?.substringBefore('@')?.takeIf { it.isNotBlank() }?.replaceFirstChar { it.uppercase() } ?: "Your account"
+
+/** Round purple-gradient avatar with the person's initial. */
+@Composable
+fun ProfileAvatar(name: String, size: Dp = 48.dp, onClick: (() -> Unit)? = null) {
+    var m = Modifier.size(size).clip(CircleShape).background(Brand.accent)
+        .border(2.dp, Color.White.copy(alpha = 0.35f), CircleShape)
+    if (onClick != null) m = m.clickable(role = Role.Button, onClick = onClick)
+    Box(m, contentAlignment = Alignment.Center) {
+        Text(
+            name.trim().firstOrNull()?.uppercase() ?: "S",
+            color = Color.White, fontWeight = FontWeight.Bold, fontSize = (size.value * 0.42f).sp
+        )
+    }
+}
+
+/** Top-of-tab greeting with the avatar on the right. */
+@Composable
+fun GreetingHeader(name: String, subtitle: String, onAvatarClick: (() -> Unit)? = null) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(greetingNow(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+            Text(name, style = MaterialTheme.typography.headlineMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+        }
+        Spacer(Modifier.width(12.dp))
+        ProfileAvatar(name, 48.dp, onAvatarClick)
+    }
+}
+
+// ============================================================ grouped lists
+
+/** One card holding several [SettingsRow]s separated by [SettingsDivider]s. */
+@Composable
+fun SettingsGroup(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) =
+    GradientCard(modifier, contentPadding = PaddingValues(0.dp), verticalArrangement = Arrangement.spacedBy(0.dp), content = content)
+
+@Composable
+fun SettingsDivider() =
+    HorizontalDivider(Modifier.padding(start = 68.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+@Composable
+fun SettingsRow(
+    icon: ImageVector, title: String, subtitle: String? = null, onClick: (() -> Unit)? = null,
+    danger: Boolean = false, trailing: (@Composable () -> Unit)? = null
+) {
+    val cs = MaterialTheme.colorScheme
+    var m = Modifier.fillMaxWidth()
+    if (onClick != null) m = m.clickable(role = Role.Button, onClick = onClick)
+    Row(m.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        IconBadge(icon, if (danger) cs.error else cs.primary, size = 38.dp)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = if (danger) cs.error else Color.Unspecified)
+            subtitle?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = cs.secondary) }
+        }
+        if (trailing != null) { Spacer(Modifier.width(8.dp)); trailing() }
+        else if (onClick != null && !danger) Icon(Icons.Filled.ChevronRight, null, tint = cs.secondary)
+    }
+}
+
+/** Compact metric: icon, value, label. Use three in a Row with weight(1f). */
+@Composable
+fun StatTile(icon: ImageVector, value: String, label: String, modifier: Modifier = Modifier) {
+    GradientCard(modifier, contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+        Text(value, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, maxLines = 1)
     }
 }

@@ -61,7 +61,8 @@ fun AppNav(openCamera: Boolean = false, onHandled: () -> Unit = {}, vm: NavViewM
         composable("parent") {
             ParentShell(
                 onOpenZones = { nav.navigate("zones/$it") }, onOpenUsage = { nav.navigate("usage/$it") },
-                onSwitchRole = switchRole, onSignOut = signOut
+                onSwitchRole = switchRole, onSignOut = signOut,
+                onOpenVault = { nav.navigate("vault") }, onOpenFiles = { nav.navigate("files") }
             )
         }
         composable("zones/{childUid}", arguments = listOf(navArgument("childUid") { type = NavType.StringType })) { GeofenceScreen(onBack = { nav.popBackStack() }) }

@@ -38,9 +38,13 @@ import com.safewe.security.SafetyCode
 import com.safewe.service.LocationService
 import com.safewe.service.SharingPrefs
 import com.safewe.ui.*
+import com.safewe.data.AppRole
+import com.safewe.ui.profile.AccountGreeting
+import com.safewe.ui.profile.PrivateHub
+import com.safewe.ui.profile.ProfileTab
 import com.safewe.ui.theme.Brand
 
-/** Child home: Home (sharing + features), Private (vault, files), Privacy (what is shared, unpair). */
+/** Child home: Home (sharing + features), Private (vault, files), Privacy (what is shared, unpair), Profile. */
 @Composable
 fun ChildShell(
     onSignOut: () -> Unit, onSwitchRole: () -> Unit, onOpenCamera: () -> Unit, onOpenFiles: () -> Unit, onOpenVault: () -> Unit,
@@ -112,7 +116,7 @@ fun ChildShell(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         bottomBar = {
             SafeWeNavBar(
-                listOf(NavItem("Home", Icons.Filled.Home), NavItem("Private", Icons.Filled.Lock), NavItem("Privacy", Icons.Filled.Shield)),
+                listOf(NavItem("Home", Icons.Filled.Home), NavItem("Private", Icons.Filled.Lock), NavItem("Privacy", Icons.Filled.Shield), NavItem("Profile", Icons.Filled.Person)),
                 selected = tab, onSelect = { tab = it }
             )
         }
@@ -120,9 +124,10 @@ fun ChildShell(
         Box(Modifier.padding(pad).fillMaxSize()) {
             Crossfade(tab, label = "child-tab") { t ->
                 when (t) {
-                    0 -> HomeTab(vm, st.pairing, st.error, paired, sharing, issues, usageOn, screenOn, screenMsg, toggleSharing, toggleScreen, openUsageSettings, openAppSettings, openBatterySettings, onOpenCamera)
-                    1 -> PrivateTab(onOpenVault, onOpenFiles)
-                    else -> PrivacyTab(vm, st.pairing, paired, sharing, usageOn, screenOn, onSwitchRole, onSignOut) { sharing = false }
+                    0 -> HomeTab(vm, st.pairing, st.error, paired, sharing, issues, usageOn, screenOn, screenMsg, toggleSharing, toggleScreen, openUsageSettings, openAppSettings, openBatterySettings, onOpenCamera) { tab = 3 }
+                    1 -> PrivateHub(AppRole.CHILD, onOpenVault, onOpenFiles)
+                    2 -> PrivacyTab(vm, st.pairing, paired, sharing, usageOn, screenOn) { sharing = false }
+                    else -> ProfileTab(AppRole.CHILD, onSwitchRole, onSignOut, onOpenVault, onOpenFiles)
                 }
             }
         }
@@ -130,12 +135,12 @@ fun ChildShell(
 }
 
 @Composable
-private fun Page(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun Page(title: String, onAvatarClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        ScreenHeader(title)
+        if (onAvatarClick != null) AccountGreeting("You decide what is shared", onAvatarClick) else ScreenHeader(title)
         content()
     }
 }
@@ -146,12 +151,13 @@ private fun Page(title: String, content: @Composable ColumnScope.() -> Unit) {
 private fun HomeTab(
     vm: ChildViewModel, pairing: Pairing?, error: String?, paired: Boolean, sharing: Boolean, issues: List<IssueCode>,
     usageOn: Boolean, screenOn: Boolean, screenMsg: String?, toggleSharing: () -> Unit, toggleScreen: () -> Unit,
-    openUsageSettings: () -> Unit, openAppSettings: () -> Unit, openBatterySettings: () -> Unit, onOpenCamera: () -> Unit
+    openUsageSettings: () -> Unit, openAppSettings: () -> Unit, openBatterySettings: () -> Unit, onOpenCamera: () -> Unit,
+    onOpenProfile: () -> Unit
 ) {
     var code by remember { mutableStateOf("") }
     var confirmPair by remember { mutableStateOf(false) }
 
-    Page("Home") {
+    Page("Home", onAvatarClick = onOpenProfile) {
         if (!paired) {
             HeroCard {
                 Text("Connect with your parent", style = MaterialTheme.typography.titleLarge)
@@ -242,26 +248,12 @@ private fun HomeTab(
     )
 }
 
-// ============================================================ Private
-
-@Composable
-private fun PrivateTab(onOpenVault: () -> Unit, onOpenFiles: () -> Unit) {
-    Page("Private") {
-        HeroCard {
-            Text("Only you can open these", style = MaterialTheme.typography.titleLarge)
-            Text("Your parent's monitoring never gives access to your private space or encrypted files. Screenshots of them are blocked.", style = MaterialTheme.typography.bodyMedium)
-        }
-        FeatureRow(Icons.Filled.Lock, "Private space", "Photos, videos and documents behind a PIN, password or fingerprint, with folders and secure preview.", onClick = onOpenVault, trailing = { Icon(Icons.Filled.ChevronRight, null) })
-        FeatureRow(Icons.Filled.EnhancedEncryption, "Encrypt a file", "Lock or unlock any single file with AES-256 and save it wherever you like.", onClick = onOpenFiles, trailing = { Icon(Icons.Filled.ChevronRight, null) })
-    }
-}
-
 // ============================================================ Privacy
 
 @Composable
 private fun PrivacyTab(
     vm: ChildViewModel, pairing: Pairing?, paired: Boolean, sharing: Boolean, usageOn: Boolean, screenOn: Boolean,
-    onSwitchRole: () -> Unit, onSignOut: () -> Unit, onUnpaired: () -> Unit
+    onUnpaired: () -> Unit
 ) {
     val ctx = LocalContext.current
     var confirmUnpair by remember { mutableStateOf(false) }
@@ -294,11 +286,6 @@ private fun PrivacyTab(
         SectionLabel("CLOUD USAGE")
         QuotaCard()
 
-        SectionLabel("ACCOUNT")
-        SectionCard {
-            OutlinedButton(onSwitchRole, Modifier.fillMaxWidth()) { Text("Switch to parent mode on this phone") }
-            OutlinedButton(onSignOut, Modifier.fillMaxWidth()) { Text("Sign out") }
-        }
     }
 
     if (confirmUnpair) AlertDialog(

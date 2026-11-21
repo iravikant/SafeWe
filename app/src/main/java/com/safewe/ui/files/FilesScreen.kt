@@ -10,6 +10,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.*
@@ -157,7 +159,7 @@ fun FilesScreen(onBack: () -> Unit, vm: FilesViewModel = hiltViewModel()) {
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text("Encrypt files") },
+                title = { Text("Encrypt and decrypt") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
             )
@@ -168,7 +170,7 @@ fun FilesScreen(onBack: () -> Unit, vm: FilesViewModel = hiltViewModel()) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             SectionCard {
-                Text("Read this first", style = MaterialTheme.typography.titleMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) { IconBadge(Icons.Filled.Info); Spacer(Modifier.width(12.dp)); Text("Read this first", style = MaterialTheme.typography.titleMedium) }
                 Text(
                     "Encrypted files can only be opened by SafeWe on THIS phone. The key lives in the phone's secure hardware and is deleted if you " +
                         "uninstall SafeWe, clear its data or reset the phone. Those files cannot be recovered by anyone, including us. " +
@@ -186,7 +188,7 @@ fun FilesScreen(onBack: () -> Unit, vm: FilesViewModel = hiltViewModel()) {
             SectionCard {
                 Row(verticalAlignment = Alignment.CenterVertically) { IconBadge(Icons.Filled.LockOpen); Spacer(Modifier.width(12.dp)); Text("Decrypt a file", style = MaterialTheme.typography.titleMedium) }
                 Text("You'll confirm with your fingerprint, face or screen lock first.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
-                OutlinedButton({ pickToDecrypt.launch(openDocument(write = false)) }, enabled = !st.busy, modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("Choose encrypted file") }
+                OutlinedButton({ pickToDecrypt.launch(openDocument(write = false)) }, enabled = !st.busy, modifier = Modifier.fillMaxWidth().height(54.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)) { Text("Choose encrypted file", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold) }
             }
 
             if (st.busy) SectionCard {
@@ -197,7 +199,11 @@ fun FilesScreen(onBack: () -> Unit, vm: FilesViewModel = hiltViewModel()) {
             st.info?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary) }
             st.done?.let { d ->
                 SectionCard {
-                    Text(d.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(10.dp))
+                        Text(d.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    }
                     d.lines.forEach { Text(it, style = MaterialTheme.typography.bodyMedium) }
                     d.deletableOriginal?.let { u -> OutlinedButton({ confirmDelete = u }) { Text("Delete the original…") } }
                 }

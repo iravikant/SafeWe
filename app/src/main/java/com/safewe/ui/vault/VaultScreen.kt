@@ -28,6 +28,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -43,7 +44,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.safewe.security.BiometricGate
 import com.safewe.security.findActivity
+import com.safewe.data.AppRole
 import com.safewe.ui.EmptyState
+import com.safewe.ui.GradientProgress
+import com.safewe.ui.HeroCard
+import com.safewe.ui.profile.ProfileViewModel
 import com.safewe.ui.GradientButton
 import com.safewe.ui.GradientProgressIndeterminate
 import com.safewe.ui.IconBadge
@@ -80,7 +85,19 @@ private fun SetupContent(vm: VaultViewModel, onBack: () -> Unit) {
         topBar = { TopAppBar(title = { Text("Create private space") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)) }
     ) { pad ->
+        val role = hiltViewModel<ProfileViewModel>().role
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            HeroCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Lock, null, tint = Color.White)
+                    Spacer(Modifier.width(12.dp))
+                    Text("Your own encrypted space", style = MaterialTheme.typography.titleLarge)
+                }
+                Text(
+                    "Photos, videos and documents, protected by a PIN or password that only you know.",
+                    style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f)
+                )
+            }
             SectionCard {
                 Text("Choose how to lock it", style = MaterialTheme.typography.titleMedium)
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -90,6 +107,14 @@ private fun SetupContent(vm: VaultViewModel, onBack: () -> Unit) {
                 }
                 Text(if (kind == SecretKind.PIN) "6 to 12 digits." else "8 or more characters.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
                 SecretField(secret, { secret = it }, if (kind == SecretKind.PIN) "New PIN" else "New password", kind)
+                val need = if (kind == SecretKind.PIN) 6 else 8
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row {
+                        Text("Length", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                        Text("${secret.length} of $need or more", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    }
+                    GradientProgress((secret.length.toFloat() / need).coerceAtMost(1f), height = 6.dp)
+                }
                 SecretField(confirm, { confirm = it }, "Repeat it", kind)
                 (local ?: ui.unlockError)?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 GradientButton(
@@ -106,7 +131,8 @@ private fun SetupContent(vm: VaultViewModel, onBack: () -> Unit) {
                 Text(
                     "If you forget this PIN or password, nobody can open your private space, not even SafeWe. There is no reset. " +
                         "The files stay on this phone only: they are lost if you uninstall SafeWe, clear its data or reset the phone. " +
-                        "Your parent's monitoring never gives access to this space. Screenshots of it are blocked.",
+                        (if (role == AppRole.PARENT) "This space is separate from your family monitoring. Screenshots of it are blocked."
+                        else "Your parent's monitoring never gives access to this space. Screenshots of it are blocked."),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary
                 )
             }
@@ -146,8 +172,15 @@ private fun UnlockContent(vm: VaultViewModel, s: VaultState.Locked, onBack: () -
             colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)) }
     ) { pad ->
         Column(Modifier.padding(pad).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            HeroCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Lock, null, tint = Color.White)
+                    Spacer(Modifier.width(12.dp))
+                    Text("Your private space is locked", style = MaterialTheme.typography.titleLarge)
+                }
+                Text("Enter your ${if (kind == SecretKind.PIN) "PIN" else "password"} to open it.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f))
+            }
             SectionCard {
-                Row(verticalAlignment = Alignment.CenterVertically) { IconBadge(Icons.Filled.Lock); Spacer(Modifier.width(12.dp)); Text("Locked", style = MaterialTheme.typography.titleMedium) }
                 SecretField(secret, { secret = it }, if (kind == SecretKind.PIN) "PIN" else "Password", kind)
                 if (waitSeconds > 0) Text("Too many tries. Try again in ${waitSeconds}s.", color = MaterialTheme.colorScheme.error)
                 else ui.unlockError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -243,6 +276,16 @@ private fun HomeContent(vm: VaultViewModel, onBack: () -> Unit, onOpenItem: (Str
             },
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            SectionCard(contentPadding = PaddingValues(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconBadge(Icons.Filled.Lock, size = 38.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("${idx.items.size} file(s) · ${idx.folders.size} folder(s)", style = MaterialTheme.typography.titleMedium)
+                        Text("Encrypted on this phone", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    }
+                }
+            }
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 listOf<Pair<ItemKind?, String>>(null to "All", ItemKind.PHOTO to "Photos", ItemKind.VIDEO to "Videos", ItemKind.DOCUMENT to "Docs").forEachIndexed { i, (k, l) ->
                     SegmentedButton(ui.kind == k, { vm.setKind(k) }, SegmentedButtonDefaults.itemShape(i, 4)) { Text(l, maxLines = 1) }
