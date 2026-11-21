@@ -22,6 +22,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.safewe.security.*
+import com.safewe.ui.ErrorBanner
+import com.safewe.ui.GradientButton
+import com.safewe.ui.GradientProgressIndeterminate
 import com.safewe.ui.IconBadge
 import com.safewe.ui.SectionCard
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -151,12 +154,12 @@ fun FilesScreen(onBack: () -> Unit, vm: FilesViewModel = hiltViewModel()) {
     LaunchedEffect(st.decryptSuggestion) { st.decryptSuggestion?.let { vm.consumeDecryptSuggestion(); saveDecrypted.launch(it) } }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("Encrypt files") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
             )
         }
     ) { pad ->
@@ -177,7 +180,7 @@ fun FilesScreen(onBack: () -> Unit, vm: FilesViewModel = hiltViewModel()) {
             SectionCard {
                 Row(verticalAlignment = Alignment.CenterVertically) { IconBadge(Icons.Filled.Lock); Spacer(Modifier.width(12.dp)); Text("Encrypt a file", style = MaterialTheme.typography.titleMedium) }
                 Text("Works with photos, videos, audio, PDFs, documents and archives. You choose where the encrypted copy is saved.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
-                Button({ pickToEncrypt.launch(openDocument(write = true)) }, enabled = !st.busy, modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("Choose file") }
+                GradientButton("Choose file", { pickToEncrypt.launch(openDocument(write = true)) }, Modifier.fillMaxWidth(), enabled = !st.busy)
             }
 
             SectionCard {
@@ -186,10 +189,11 @@ fun FilesScreen(onBack: () -> Unit, vm: FilesViewModel = hiltViewModel()) {
                 OutlinedButton({ pickToDecrypt.launch(openDocument(write = false)) }, enabled = !st.busy, modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("Choose encrypted file") }
             }
 
-            if (st.busy) {
-                Row(verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Spacer(Modifier.width(12.dp)); Text("Working… large files can take a while.") }
+            if (st.busy) SectionCard {
+                Text("Working… large files can take a while.", style = MaterialTheme.typography.bodyMedium)
+                GradientProgressIndeterminate()
             }
-            st.error?.let { SectionCard { Text(it, color = MaterialTheme.colorScheme.error) } }
+            st.error?.let { ErrorBanner(it) }
             st.info?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary) }
             st.done?.let { d ->
                 SectionCard {

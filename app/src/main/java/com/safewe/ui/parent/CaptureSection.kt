@@ -123,7 +123,7 @@ fun CaptureSection(child: Pairing, vm: CaptureViewModel = hiltViewModel()) {
 
 @Composable
 fun CaptureResult(st: CaptureUi, onDismiss: () -> Unit) {
-    st.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+    st.error?.let { com.safewe.ui.ErrorBanner(it) }
     val image = st.image ?: return
     val preview = st.preview ?: return
     key(preview.requestId) {
@@ -161,12 +161,11 @@ fun CaptureResult(st: CaptureUi, onDismiss: () -> Unit) {
         }
         com.safewe.ui.SectionCard {
             Image(image, "Received $label", Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small), contentScale = ContentScale.FillWidth)
-            Button(
+            com.safewe.ui.GradientButton(
+                if (saving) "Saving…" else "Download $label",
                 onClick = { download.launch("SafeWe-$label-${System.currentTimeMillis()}.$extension") },
-                enabled = !saving
-            ) {
-                Text(if (saving) "Saving…" else "Download $label")
-            }
+                modifier = Modifier.fillMaxWidth(), enabled = !saving
+            )
             savedMessage?.let {
                 Text(it, color = if (saveFailed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
             }

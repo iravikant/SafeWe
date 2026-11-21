@@ -1,9 +1,12 @@
 package com.safewe.ui.parent
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -12,7 +15,11 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -27,6 +34,7 @@ import com.safewe.health.PresenceRules
 import com.safewe.security.SafetyCode
 import com.safewe.transfer.CaptureType
 import com.safewe.ui.*
+import com.safewe.ui.theme.Brand
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -57,13 +65,12 @@ fun ParentShell(
     val child = st.children.firstOrNull { it.childUid == st.selected } ?: st.children.firstOrNull()
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         bottomBar = {
-            NavigationBar {
-                listOf("Family" to Icons.Filled.Home, "Activity" to Icons.Filled.Notifications, "Settings" to Icons.Filled.Settings).forEachIndexed { i, (label, icon) ->
-                    NavigationBarItem(selected = tab == i, onClick = { tab = i }, icon = { Icon(icon, null) }, label = { Text(label) })
-                }
-            }
+            SafeWeNavBar(
+                listOf(NavItem("Family", Icons.Filled.Home), NavItem("Activity", Icons.Filled.Notifications), NavItem("Settings", Icons.Filled.Settings)),
+                selected = tab, onSelect = { tab = it }
+            )
         }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
@@ -89,7 +96,7 @@ private fun FamilyTab(st: ParentState, child: Pairing?, vm: ParentViewModel, onO
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Family", style = MaterialTheme.typography.headlineMedium)
+        ScreenHeader("Family", "Stay connected, with everyone's consent")
 
         if (child == null) {
             EmptyState(Icons.Filled.PhoneAndroid, "Add your child's phone", "Create a one-time code, then enter it in SafeWe on their phone. They approve it before anything is shared.")
@@ -107,13 +114,30 @@ private fun FamilyTab(st: ParentState, child: Pairing?, vm: ParentViewModel, onO
 
         // ---- hero: who, are they reachable, anything wrong
         HeroCard {
-            Text(nameOf(st, child), style = MaterialTheme.typography.titleLarge)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.PhoneAndroid, null, tint = Color.White)
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(nameOf(st, child), style = MaterialTheme.typography.titleLarge)
+                    Text("Paired device", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.7f))
+                }
+            }
             HeroStatus(st.statuses[child.childUid])
             SafetyCode.compute(child.parentAgreementKey, child.parentSigningKey, child.childAgreementKey, child.childSigningKey)?.let {
-                Text("Security code  $it", style = MaterialTheme.typography.bodyMedium)
-                Text("Check that it matches the code on your child's phone.", style = MaterialTheme.typography.bodyMedium)
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.Black.copy(alpha = 0.28f)).padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text("SECURITY CODE", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
+                    Text(it, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Monospace)
+                    Text("Check that it matches the code on your child's phone.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.7f))
+                }
             }
         }
+
+        SectionLabel("Quick actions")
 
         // ---- quick actions
         val busy = st.requesting || cap.busy
@@ -132,10 +156,9 @@ private fun FamilyTab(st: ParentState, child: Pairing?, vm: ParentViewModel, onO
             }
         }
 
-        if (busy) Row(verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-            Spacer(Modifier.width(10.dp))
+        if (busy) SectionCard {
             Text(if (cap.busy) cap.status ?: "Working…" else "Waiting for your child's phone…", style = MaterialTheme.typography.bodyMedium)
+            GradientProgressIndeterminate()
         } else {
             Text(
                 "Photos and screenshots require the corresponding sharing session on your child's phone.",
@@ -144,7 +167,7 @@ private fun FamilyTab(st: ParentState, child: Pairing?, vm: ParentViewModel, onO
         }
 
         // ---- results
-        st.message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+        st.message?.let { ErrorBanner(it) }
         st.result?.let { LocationCard(it) }
         if (st.history.isNotEmpty()) HistoryCard(st.history)
         CaptureResult(cap, capVm::dismiss)
@@ -153,15 +176,28 @@ private fun FamilyTab(st: ParentState, child: Pairing?, vm: ParentViewModel, onO
 
 @Composable
 private fun HeroStatus(s: DeviceStatus?) {
+    val soft = Color.White.copy(alpha = 0.75f)
     val now by produceState(System.currentTimeMillis()) { while (true) { kotlinx.coroutines.delay(30_000); value = System.currentTimeMillis() } }
-    if (s == null) { Text("No status yet. It appears once your child turns sharing on.", style = MaterialTheme.typography.bodyMedium); return }
+    if (s == null) { Text("No status yet. It appears once your child turns sharing on.", style = MaterialTheme.typography.bodyMedium, color = soft); return }
     val presence = PresenceRules.of(s.sharing, s.updatedAt, now)
     val label = when (presence) { Presence.ONLINE -> "Online"; Presence.PAUSED -> "Sharing paused"; Presence.OFFLINE -> "Offline"; Presence.UNKNOWN -> "Unknown" }
-    Text(
-        "$label · seen ${PresenceRules.ago(s.updatedAt, now)}" + if (s.battery >= 0) " · battery ${s.battery}%" + (if (s.charging) " (charging)" else "") else "",
-        style = MaterialTheme.typography.bodyLarge
-    )
-    s.issues.mapNotNull { IssueCode.parse(it) }.forEach { Text("• " + it.parentMessage, style = MaterialTheme.typography.bodyMedium) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(10.dp).background(if (presence == Presence.ONLINE) Color.White else Color.White.copy(alpha = 0.4f), CircleShape))
+        Spacer(Modifier.width(8.dp))
+        Text(label, style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.width(8.dp))
+        Text("· seen ${PresenceRules.ago(s.updatedAt, now)}", style = MaterialTheme.typography.bodyMedium, color = soft)
+    }
+    if (s.battery >= 0) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row {
+                Text("Battery", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = soft)
+                Text("${s.battery}%" + if (s.charging) " · charging" else "", style = MaterialTheme.typography.bodyMedium)
+            }
+            GradientProgress(s.battery / 100f, brush = Brand.onHeroProgress, trackColor = Color.White.copy(alpha = 0.18f), height = 10.dp)
+        }
+    }
+    s.issues.mapNotNull { IssueCode.parse(it) }.forEach { Text("• " + it.parentMessage, style = MaterialTheme.typography.bodyMedium, color = soft) }
 }
 
 // ============================================================ Activity
@@ -175,7 +211,7 @@ private fun ActivityTab(st: ParentState, child: Pairing?) {
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Activity", style = MaterialTheme.typography.headlineMedium)
+        ScreenHeader("Activity")
         if (child == null) { EmptyState(Icons.Filled.Notifications, "Nothing yet", "Safe-zone alerts will show up here once a device is paired."); return@Column }
         Text("Safe-zone alerts for ${nameOf(st, child)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
         if (alerts.isEmpty()) EmptyState(Icons.Filled.NotificationsNone, "No alerts", "You'll see when your child arrives at or leaves a safe zone, or enters a restricted one.")
@@ -202,7 +238,7 @@ private fun SettingsTab(st: ParentState, vm: ParentViewModel, onSwitchRole: () -
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Settings", style = MaterialTheme.typography.headlineMedium)
+        ScreenHeader("Settings", "Devices, usage and account")
 
         SectionLabel("DEVICES")
         AddDeviceCard(st, vm)
@@ -252,10 +288,15 @@ private fun AddDeviceCard(st: ParentState, vm: ParentViewModel) {
         Text("Add a child's phone", style = MaterialTheme.typography.titleMedium)
         Text("Make a one-time code, then enter it in SafeWe on their phone.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
         st.code?.let {
-            Text(it.chunked(4).joinToString(" "), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
-            Text("Valid for 10 minutes. Works once.", style = MaterialTheme.typography.bodyMedium)
+            Box(
+                Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)).padding(vertical = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(it.chunked(4).joinToString(" "), style = MaterialTheme.typography.headlineMedium, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
+            }
+            Text("Valid for 10 minutes. Works once.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
         }
-        FilledTonalButton(onClick = vm::newCode) { Icon(Icons.Filled.QrCode2, null); Spacer(Modifier.width(8.dp)); Text(if (st.code == null) "Create code" else "New code") }
+        GradientButton(if (st.code == null) "Create code" else "New code", onClick = vm::newCode, modifier = Modifier.fillMaxWidth(), icon = Icons.Filled.QrCode2)
     }
 }
 

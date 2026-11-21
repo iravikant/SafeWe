@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -144,7 +145,7 @@ internal fun LocationCard(r: LocationResult) {
             Text("Last known location", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
             StatusPill(if (r.fresh) "Fresh" else "Cached", r.fresh)
         }
-        GoogleMap(Modifier.fillMaxWidth().height(220.dp), cameraPositionState = camera, uiSettings = MapUiSettings(zoomControlsEnabled = false)) {
+        GoogleMap(Modifier.fillMaxWidth().height(220.dp).clip(MaterialTheme.shapes.small), cameraPositionState = camera, uiSettings = MapUiSettings(zoomControlsEnabled = false)) {
             Marker(state = MarkerState(pos), title = "Child")
         }
         Text("%.5f, %.5f".format(r.latitude, r.longitude), style = MaterialTheme.typography.bodyLarge)
@@ -165,7 +166,7 @@ internal fun HistoryCard(points: List<HistoryPoint>) {
     }
     SectionCard {
         Text("Last ${points.size} locations", style = MaterialTheme.typography.titleMedium)
-        GoogleMap(Modifier.fillMaxWidth().height(240.dp), cameraPositionState = camera, uiSettings = MapUiSettings(zoomControlsEnabled = false)) {
+        GoogleMap(Modifier.fillMaxWidth().height(240.dp).clip(MaterialTheme.shapes.small), cameraPositionState = camera, uiSettings = MapUiSettings(zoomControlsEnabled = false)) {
             Polyline(points = latLngs.reversed(), width = 6f)
             latLngs.forEachIndexed { i, p -> Marker(state = MarkerState(p), title = if (i == 0) "Newest" else "#${i + 1}") }
         }

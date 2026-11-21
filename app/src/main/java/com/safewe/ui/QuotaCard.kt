@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import com.safewe.ui.theme.Brand
 import com.safewe.transfer.BudgetPolicy
 import com.safewe.transfer.Quota
 import com.safewe.transfer.QuotaMath
@@ -51,8 +52,12 @@ fun QuotaCard(vm: QuotaViewModel = hiltViewModel()) {
 
 @Composable
 private fun Meter(label: String, used: Long, limit: Long) {
-    Column {
-        Row { Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium); Text("%,d / %,d".format(used, limit), style = MaterialTheme.typography.bodyMedium) }
-        LinearProgressIndicator(progress = { (used.toFloat() / limit).coerceIn(0f, 1f) }, Modifier.fillMaxWidth().padding(top = 4.dp))
+    val fraction = if (limit > 0) (used.toFloat() / limit).coerceIn(0f, 1f) else 0f
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row {
+            Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+            Text("%,d / %,d".format(used, limit), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+        }
+        GradientProgress(fraction, brush = if (fraction >= 0.9f) Brand.progressCritical else Brand.progress)
     }
 }

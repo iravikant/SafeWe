@@ -1,3 +1,5 @@
 <resources>
-    <style name="Theme.SafeWe" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.SafeWe" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#FFF4F3F8</item>
+    </style>
 </resources>

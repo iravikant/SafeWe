@@ -14,13 +14,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.safewe.data.remote.*
+import com.safewe.ui.ErrorBanner
+import com.safewe.ui.GradientProgress
+import com.safewe.ui.GradientProgressIndeterminate
+import com.safewe.ui.HeroCard
 import com.safewe.ui.SectionCard
+import com.safewe.ui.theme.Brand
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -77,13 +84,13 @@ fun formatDuration(ms: Long): String {
 fun UsageScreen(onBack: () -> Unit, vm: UsageViewModel = hiltViewModel()) {
     val st by vm.state.collectAsState()
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("App usage") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                 actions = { IconButton(onClick = vm::refresh, enabled = !st.loading) { Icon(Icons.Filled.Refresh, "Refresh") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
             )
         }
     ) { pad ->
@@ -97,10 +104,11 @@ fun UsageScreen(onBack: () -> Unit, vm: UsageViewModel = hiltViewModel()) {
                 }
             }
 
-            if (st.loading) {
-                Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            if (st.loading) SectionCard {
+                Text("Asking your child's phone…", style = MaterialTheme.typography.bodyMedium)
+                GradientProgressIndeterminate()
             }
-            st.error?.let { SectionCard { Text(it, color = MaterialTheme.colorScheme.error) } }
+            st.error?.let { ErrorBanner(it) }
 
             st.result?.takeIf { !st.loading }?.let { r ->
                 val all = r.days.sortedBy { it.day }
@@ -115,10 +123,13 @@ fun UsageScreen(onBack: () -> Unit, vm: UsageViewModel = hiltViewModel()) {
                 val total = totals.sum()
                 val activeDays = totals.count { it > 0 }.coerceAtLeast(1)
 
-                SectionCard {
-                    Text(if (st.periodDays == 1) "Screen time (latest day)" else "Total screen time", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
-                    Text(formatDuration(total), style = MaterialTheme.typography.headlineMedium)
-                    if (st.periodDays > 1) Text("Average ${formatDuration(total / activeDays)} per day", style = MaterialTheme.typography.bodyMedium)
+                HeroCard {
+                    Text(
+                        if (st.periodDays == 1) "SCREEN TIME (LATEST DAY)" else "TOTAL SCREEN TIME",
+                        style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.7f)
+                    )
+                    Text(formatDuration(total), style = MaterialTheme.typography.displaySmall)
+                    if (st.periodDays > 1) Text("Average ${formatDuration(total / activeDays)} per day", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f))
                 }
 
                 if (st.periodDays > 1) {
@@ -135,13 +146,14 @@ fun UsageScreen(onBack: () -> Unit, vm: UsageViewModel = hiltViewModel()) {
                 SectionCard {
                     Text("Most used apps", style = MaterialTheme.typography.titleMedium)
                     val max = apps.firstOrNull()?.ms?.coerceAtLeast(1L) ?: 1L
-                    apps.forEach { a ->
-                        Column {
-                            Row {
+                    apps.forEachIndexed { i, a ->
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("${i + 1}", Modifier.width(24.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                                 Text(a.label.ifBlank { a.pkg }, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, maxLines = 1)
-                                Text(formatDuration(a.ms), style = MaterialTheme.typography.bodyMedium)
+                                Text(formatDuration(a.ms), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
                             }
-                            LinearProgressIndicator(progress = { a.ms.toFloat() / max }, Modifier.fillMaxWidth().padding(top = 4.dp))
+                            GradientProgress(a.ms.toFloat() / max)
                         }
                     }
                     if (st.periodDays > 1) Text("Based on each day's top 10 apps.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
@@ -164,7 +176,10 @@ private fun BarChart(values: List<Long>, modifier: Modifier) {
             val x = i * (bw + gap)
             drawRoundRect(track, Offset(x, 0f), Size(bw, size.height), CornerRadius(4.dp.toPx()))
             val h = size.height * v / max
-            if (h > 0f) drawRoundRect(color, Offset(x, size.height - h), Size(bw, h), CornerRadius(4.dp.toPx()))
+            if (h > 0f) drawRoundRect(
+                Brush.verticalGradient(listOf(Brand.Lavender, color, Brand.PurpleDark), startY = size.height - h, endY = size.height),
+                Offset(x, size.height - h), Size(bw, h), CornerRadius(4.dp.toPx())
+            )
         }
     }
 }

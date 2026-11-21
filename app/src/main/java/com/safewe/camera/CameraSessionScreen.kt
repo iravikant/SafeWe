@@ -8,9 +8,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
@@ -18,7 +20,11 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.safewe.ui.ErrorBanner
+import com.safewe.ui.GradientButton
+import com.safewe.ui.HeroCard
 import com.safewe.ui.SectionCard
+import com.safewe.ui.StatusPill
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,44 +52,57 @@ fun CameraSessionScreen(onBack: () -> Unit, vm: CameraSessionViewModel = hiltVie
         notificationsEnabled = notificationsAllowed()
     }
 
-    Scaffold(topBar = {
-        TopAppBar(
-            title = { Text("Camera sharing") },
-            navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+    Scaffold(
+        containerColor = Color.Transparent,
+        topBar = {
+            TopAppBar(
+                title = { Text("Camera sharing") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+            )
+        }
+    ) { padding ->
+        Column(Modifier.padding(padding).padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            HeroCard {
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Icon(Icons.Filled.PhotoCamera, null, tint = Color.White)
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        if (active) "Camera sharing is on" else "Camera sharing is off",
+                        style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f)
+                    )
+                }
+                Text(
+                    "While sharing is on, your paired parent can take a photo even when you leave this screen. " +
+                        "SafeWe shows an ongoing notification with a Stop sharing action.",
+                    style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f)
+                )
             }
-        )
-    }) { padding ->
-        Column(Modifier.padding(padding).padding(20.dp)) {
             SectionCard {
-                Text(if (active) "Camera sharing is on" else "Camera sharing is off",
-                    style = MaterialTheme.typography.titleMedium)
-                Text("While sharing is on, your paired parent can take a photo even when you leave this screen. " +
-                    "SafeWe shows an ongoing notification with a Stop sharing action.")
                 if (active) {
-                    Button(onClick = { CameraSessionService.stop(context) }) { Text("Stop sharing") }
+                    StatusPill("Sharing", true)
+                    GradientButton("Stop sharing", onClick = { CameraSessionService.stop(context) }, modifier = Modifier.fillMaxWidth())
                 } else {
+                    Text("Choose a camera", style = MaterialTheme.typography.titleMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(selected = !front, onClick = { front = false }, label = { Text("Rear camera") })
                         FilterChip(selected = front, onClick = { front = true }, label = { Text("Front camera") })
                     }
                     when {
-                        !cameraGranted -> Button(onClick = { cameraPermission.launch(Manifest.permission.CAMERA) }) {
-                            Text("Allow camera")
-                        }
+                        !cameraGranted -> GradientButton("Allow camera", onClick = { cameraPermission.launch(Manifest.permission.CAMERA) }, modifier = Modifier.fillMaxWidth())
                         !notificationsEnabled -> {
-                            Text("Enable SafeWe notifications in Android settings to start sharing.")
+                            Text("Enable SafeWe notifications in Android settings to start sharing.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
                             if (Build.VERSION.SDK_INT >= 33) {
-                                Button(onClick = { notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS) }) {
-                                    Text("Allow notifications")
-                                }
+                                GradientButton("Allow notifications", onClick = { notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS) }, modifier = Modifier.fillMaxWidth())
                             }
                         }
-                        else -> Button(onClick = {
+                        else -> GradientButton("Start sharing", onClick = {
                             error = runCatching { CameraSessionService.start(context, front) }.isFailure
-                        }) { Text("Start sharing") }
+                        }, modifier = Modifier.fillMaxWidth())
                     }
-                    if (error) Text("Camera sharing could not start.", color = MaterialTheme.colorScheme.error)
+                    if (error) ErrorBanner("Camera sharing could not start.")
                 }
             }
         }

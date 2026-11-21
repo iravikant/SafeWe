@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -42,7 +43,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.safewe.security.BiometricGate
 import com.safewe.security.findActivity
+import com.safewe.ui.EmptyState
+import com.safewe.ui.GradientButton
+import com.safewe.ui.GradientProgressIndeterminate
 import com.safewe.ui.IconBadge
+import com.safewe.ui.fieldColors
+import com.safewe.ui.theme.Brand
 import com.safewe.ui.SectionCard
 import com.safewe.vault.*
 import kotlinx.coroutines.delay
@@ -70,9 +76,9 @@ private fun SetupContent(vm: VaultViewModel, onBack: () -> Unit) {
     var local by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = { TopAppBar(title = { Text("Create private space") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)) }
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)) }
     ) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             SectionCard {
@@ -86,13 +92,14 @@ private fun SetupContent(vm: VaultViewModel, onBack: () -> Unit) {
                 SecretField(secret, { secret = it }, if (kind == SecretKind.PIN) "New PIN" else "New password", kind)
                 SecretField(confirm, { confirm = it }, "Repeat it", kind)
                 (local ?: ui.unlockError)?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                Button(
+                GradientButton(
+                    "Create private space",
                     onClick = {
                         local = CredentialRules.validate(kind, secret) ?: if (secret != confirm) "The two entries do not match." else null
                         if (local == null) vm.setup(secret, kind)
                     },
-                    enabled = !ui.busy, modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) { if (ui.busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("Create private space") }
+                    modifier = Modifier.fillMaxWidth(), loading = ui.busy
+                )
             }
             SectionCard {
                 Text("Please read", style = MaterialTheme.typography.titleMedium)
@@ -113,7 +120,7 @@ private fun SecretField(value: String, onChange: (String) -> Unit, label: String
         value, { onChange(if (kind == SecretKind.PIN) it.filter(Char::isDigit).take(CredentialRules.PIN_MAX) else it.take(CredentialRules.PW_MAX)) },
         label = { Text(label) }, singleLine = true, visualTransformation = PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = if (kind == SecretKind.PIN) KeyboardType.NumberPassword else KeyboardType.Password),
-        modifier = modifier, shape = MaterialTheme.shapes.small
+        modifier = modifier, shape = MaterialTheme.shapes.small, colors = fieldColors()
     )
 }
 
@@ -134,9 +141,9 @@ private fun UnlockContent(vm: VaultViewModel, s: VaultState.Locked, onBack: () -
     LaunchedEffect(Unit) { if (s.biometric && waitSeconds == 0L) ctx.findActivity()?.let { vm.unlockWithBiometric(it) } }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = { TopAppBar(title = { Text("Private space") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)) }
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)) }
     ) { pad ->
         Column(Modifier.padding(pad).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             SectionCard {
@@ -144,9 +151,10 @@ private fun UnlockContent(vm: VaultViewModel, s: VaultState.Locked, onBack: () -
                 SecretField(secret, { secret = it }, if (kind == SecretKind.PIN) "PIN" else "Password", kind)
                 if (waitSeconds > 0) Text("Too many tries. Try again in ${waitSeconds}s.", color = MaterialTheme.colorScheme.error)
                 else ui.unlockError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                Button({ vm.unlock(secret); secret = "" }, enabled = secret.isNotEmpty() && !ui.busy && waitSeconds == 0L, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                    if (ui.busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("Unlock")
-                }
+                GradientButton(
+                    "Unlock", { vm.unlock(secret); secret = "" },
+                    Modifier.fillMaxWidth(), enabled = secret.isNotEmpty() && waitSeconds == 0L, loading = ui.busy
+                )
                 if (s.biometric) OutlinedButton({ ctx.findActivity()?.let { vm.unlockWithBiometric(it) } }, Modifier.fillMaxWidth()) {
                     Icon(Icons.Filled.Fingerprint, null); Spacer(Modifier.width(8.dp)); Text("Use fingerprint or face")
                 }
@@ -182,7 +190,7 @@ private fun HomeContent(vm: VaultViewModel, onBack: () -> Unit, onOpenItem: (Str
     val selectedFolder = idx.folders.firstOrNull { it.id == ui.folderId }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
@@ -210,7 +218,7 @@ private fun HomeContent(vm: VaultViewModel, onBack: () -> Unit, onOpenItem: (Str
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
             )
         },
         floatingActionButton = {
@@ -223,7 +231,8 @@ private fun HomeContent(vm: VaultViewModel, onBack: () -> Unit, onOpenItem: (Str
                             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     )
                 },
-                icon = { Icon(Icons.Filled.Add, null) }, text = { Text("Add files") }
+                icon = { Icon(Icons.Filled.Add, null) }, text = { Text("Add files") },
+                containerColor = Brand.Purple, contentColor = androidx.compose.ui.graphics.Color.White
             )
         }
     ) { pad ->
@@ -252,12 +261,13 @@ private fun HomeContent(vm: VaultViewModel, onBack: () -> Unit, onOpenItem: (Str
                     TextButton({ deleteFolder = true }) { Text("Delete folder") }
                 }
             }
-            if (ui.busy) Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp); Spacer(Modifier.width(10.dp)); Text(ui.progress ?: "Working…")
+            if (ui.busy) Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(ui.progress ?: "Working…", style = MaterialTheme.typography.bodyMedium)
+                GradientProgressIndeterminate()
             }
             if (items.isEmpty() && !ui.busy) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Nothing here yet.\nTap “Add files” to move photos, videos or documents into your private space.", color = MaterialTheme.colorScheme.secondary)
+                    EmptyState(Icons.Filled.Folder, "Nothing here yet", "Tap “Add files” to move photos, videos or documents into your private space.", Modifier.padding(horizontal = 24.dp))
                 }
             } else {
                 LazyVerticalGrid(GridCells.Adaptive(104.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 88.dp)) {
@@ -293,7 +303,10 @@ private fun pickedUris(data: Intent?): List<Uri> {
 @Composable
 private fun ItemCell(item: VaultItem, vm: VaultViewModel, onClick: () -> Unit) {
     val thumb by produceState<ImageBitmap?>(null, item.id) { value = vm.thumbnail(item)?.asImageBitmap() }
-    Column(Modifier.clip(MaterialTheme.shapes.small).combinedClickable(onClick = onClick).background(MaterialTheme.colorScheme.surface)) {
+    Column(
+        Modifier.clip(MaterialTheme.shapes.small).combinedClickable(onClick = onClick).background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small)
+    ) {
         Box(Modifier.fillMaxWidth().aspectRatio(1f).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
             thumb?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
                 ?: Icon(kindIcon(item.kind), null, Modifier.size(36.dp), tint = MaterialTheme.colorScheme.secondary)

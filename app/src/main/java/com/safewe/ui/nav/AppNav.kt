@@ -14,6 +14,7 @@ import com.safewe.camera.CameraSessionScreen
 import com.safewe.data.AppRole
 import com.safewe.data.RoleStore
 import com.safewe.data.remote.AuthRepository
+import com.safewe.ui.ScreenBackground
 import com.safewe.ui.auth.AuthScreen
 import com.safewe.ui.child.ChildShell
 import com.safewe.ui.files.FilesScreen
@@ -48,6 +49,7 @@ fun AppNav(openCamera: Boolean = false, onHandled: () -> Unit = {}, vm: NavViewM
         }
     }
 
+    ScreenBackground {
     NavHost(nav, startDestination = start) {
         composable("auth") { AuthScreen(onAuthed = { nav.navigate(routeFor(vm.roles.get())) { popUpTo("auth") { inclusive = true } } }) }
         composable("role") {
@@ -74,5 +76,6 @@ fun AppNav(openCamera: Boolean = false, onHandled: () -> Unit = {}, vm: NavViewM
         composable("files") { FilesScreen(onBack = { nav.popBackStack() }) }
         composable("vault") { VaultScreen(onBack = { nav.popBackStack() }, onOpenItem = { nav.navigate("vault/item/$it") }) }
         composable("vault/item/{id}", arguments = listOf(navArgument("id") { type = NavType.StringType })) { VaultItemScreen(onBack = { nav.popBackStack() }) }
+    }
     }
 }

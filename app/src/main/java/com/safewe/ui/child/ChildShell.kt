@@ -9,7 +9,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -19,7 +22,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -32,6 +38,7 @@ import com.safewe.security.SafetyCode
 import com.safewe.service.LocationService
 import com.safewe.service.SharingPrefs
 import com.safewe.ui.*
+import com.safewe.ui.theme.Brand
 
 /** Child home: Home (sharing + features), Private (vault, files), Privacy (what is shared, unpair). */
 @Composable
@@ -102,13 +109,12 @@ fun ChildShell(
     val openBatterySettings: () -> Unit = { ctx.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         bottomBar = {
-            NavigationBar {
-                listOf("Home" to Icons.Filled.Home, "Private" to Icons.Filled.Lock, "Privacy" to Icons.Filled.Shield).forEachIndexed { i, (label, icon) ->
-                    NavigationBarItem(selected = tab == i, onClick = { tab = i }, icon = { Icon(icon, null) }, label = { Text(label) })
-                }
-            }
+            SafeWeNavBar(
+                listOf(NavItem("Home", Icons.Filled.Home), NavItem("Private", Icons.Filled.Lock), NavItem("Privacy", Icons.Filled.Shield)),
+                selected = tab, onSelect = { tab = it }
+            )
         }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
@@ -129,7 +135,7 @@ private fun Page(title: String, content: @Composable ColumnScope.() -> Unit) {
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(title, style = MaterialTheme.typography.headlineMedium)
+        ScreenHeader(title)
         content()
     }
 }
@@ -154,23 +160,42 @@ private fun HomeTab(
             SectionCard {
                 OutlinedTextField(
                     code, { code = it.filter(Char::isDigit).take(8) }, label = { Text("Parent's 8-digit code") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small,
+                    colors = fieldColors()
                 )
-                Button({ confirmPair = true }, enabled = code.length == 8, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Continue") }
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                GradientButton("Continue", { confirmPair = true }, Modifier.fillMaxWidth(), enabled = code.length == 8)
+                error?.let { ErrorBanner(it) }
             }
         } else {
             HeroCard {
-                Text(if (sharing) "You're sharing your location" else "Sharing is off", style = MaterialTheme.typography.titleLarge)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
+                        Icon(if (sharing) Icons.Filled.LocationOn else Icons.Filled.LocationOff, null, tint = Color.White)
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Text(if (sharing) "You're sharing your location" else "Sharing is off", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                }
                 Text(
                     if (sharing) "Your parent can ask where you are, and gets safe-zone alerts. A notification is always shown. Stop whenever you like."
                     else "Your parent can't see where you are right now.",
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f)
                 )
+                Spacer(Modifier.height(4.dp))
                 Button(
-                    toggleSharing, Modifier.fillMaxWidth().height(52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onPrimary, contentColor = MaterialTheme.colorScheme.primary)
-                ) { Text(if (sharing) "Stop sharing" else "Start sharing") }
+                    toggleSharing, Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Brand.PurpleDeep)
+                ) { Text(if (sharing) "Stop sharing" else "Start sharing", fontWeight = FontWeight.SemiBold) }
+            }
+
+            // How many of the sharing options are currently on.
+            val onCount = listOf(sharing, screenOn, usageOn).count { it }
+            SectionCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Sharing overview", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    Text("$onCount of 3 on", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                }
+                GradientProgress(onCount / 3f, height = 10.dp)
+                Text("Location, screen sharing and app usage. You choose each one.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
             }
         }
 

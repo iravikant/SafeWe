@@ -1,0 +1,6 @@
+<resources>
+    <!-- Dark window background so there is no white flash before Compose draws. -->
+    <style name="Theme.SafeWe" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#FF08070D</item>
+    </style>
+</resources>

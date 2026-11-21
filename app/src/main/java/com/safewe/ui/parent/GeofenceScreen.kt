@@ -6,10 +6,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -20,7 +23,11 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 import com.safewe.data.remote.*
+import com.safewe.ui.ErrorBanner
+import com.safewe.ui.GradientButton
+import com.safewe.ui.IconBadge
 import com.safewe.ui.SectionCard
+import com.safewe.ui.fieldColors
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -83,12 +90,12 @@ fun GeofenceScreen(onBack: () -> Unit, vm: GeofenceViewModel = hiltViewModel()) 
     fun reset() { name = ""; center = null; poly = emptyList() }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("Zones") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
             )
         }
     ) { pad ->
@@ -98,16 +105,16 @@ fun GeofenceScreen(onBack: () -> Unit, vm: GeofenceViewModel = hiltViewModel()) 
         ) {
             SectionCard {
                 GoogleMap(
-                    Modifier.fillMaxWidth().height(300.dp), cameraPositionState = camera,
+                    Modifier.fillMaxWidth().height(300.dp).clip(MaterialTheme.shapes.small), cameraPositionState = camera,
                     uiSettings = MapUiSettings(zoomControlsEnabled = false),
                     onMapClick = { p -> if (shape == "CIRCLE") center = p else poly = poly + p }
                 ) {
                     st.fences.forEach { f ->
-                        val c = if (f.zone == "SAFE") Color(0xFF0F9D8A) else Color(0xFFD64545)
+                        val c = if (f.zone == "SAFE") Color(0xFF8B5CF6) else Color(0xFFEF4444)
                         if (f.shape == "CIRCLE") Circle(LatLng(f.lat, f.lon), radius = f.radius, fillColor = c.copy(alpha = 0.2f), strokeColor = c)
                         else if (f.points.size >= 3) Polygon(f.points.map { LatLng(it.lat, it.lon) }, fillColor = c.copy(alpha = 0.2f), strokeColor = c)
                     }
-                    val draft = Color(0xFF3F51B5)
+                    val draft = Color(0xFFE5E7EB)
                     if (shape == "CIRCLE") center?.let { Circle(it, radius = radius.toDouble(), fillColor = draft.copy(alpha = 0.2f), strokeColor = draft) }
                     else if (poly.size >= 3) Polygon(poly, fillColor = draft.copy(alpha = 0.2f), strokeColor = draft)
                     else if (poly.size == 2) Polyline(poly, color = draft)
@@ -131,7 +138,7 @@ fun GeofenceScreen(onBack: () -> Unit, vm: GeofenceViewModel = hiltViewModel()) 
                     }
                 }
                 OutlinedTextField(name, { name = it }, label = { Text("Name (e.g. School)") }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
+                    modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small, colors = fieldColors())
                 if (shape == "CIRCLE") {
                     Text("Tap the map to place the centre. Radius: ${radius.toInt()} m", style = MaterialTheme.typography.bodyMedium)
                     Slider(radius, { radius = it }, valueRange = 100f..2000f)
@@ -139,8 +146,8 @@ fun GeofenceScreen(onBack: () -> Unit, vm: GeofenceViewModel = hiltViewModel()) 
                     Text("Tap the map to add corners (${poly.size} so far, 3 needed).", style = MaterialTheme.typography.bodyMedium)
                     TextButton(onClick = { poly = poly.dropLast(1) }, enabled = poly.isNotEmpty()) { Text("Undo last corner") }
                 }
-                Button(
-                    enabled = canSave, modifier = Modifier.fillMaxWidth().height(52.dp),
+                GradientButton(
+                    "Save zone", enabled = canSave, modifier = Modifier.fillMaxWidth(),
                     onClick = {
                         vm.save(
                             GeofenceConfig(
@@ -150,7 +157,7 @@ fun GeofenceScreen(onBack: () -> Unit, vm: GeofenceViewModel = hiltViewModel()) 
                             )
                         ); reset()
                     }
-                ) { Text("Save zone") }
+                )
                 Text(
                     "Circles are monitored by Google Play services. Polygons are checked whenever the child's phone reports a location, " +
                         "so alerts can be delayed by several minutes.",
@@ -163,6 +170,11 @@ fun GeofenceScreen(onBack: () -> Unit, vm: GeofenceViewModel = hiltViewModel()) 
                 if (st.fences.isEmpty()) Text("None yet.", color = MaterialTheme.colorScheme.secondary)
                 st.fences.forEach { f ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconBadge(
+                            if (f.zone == "SAFE") Icons.Filled.Place else Icons.Filled.Warning,
+                            if (f.zone == "SAFE") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        )
+                        Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(f.name, style = MaterialTheme.typography.bodyLarge)
                             Text("${f.shape.lowercase()} · ${f.zone.lowercase()}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
@@ -185,7 +197,7 @@ fun GeofenceScreen(onBack: () -> Unit, vm: GeofenceViewModel = hiltViewModel()) 
                     }
                 }
             }
-            st.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            st.message?.let { ErrorBanner(it) }
         }
     }
 }
