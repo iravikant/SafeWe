@@ -6,6 +6,10 @@ import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderF
 /** Release builds attest with Play Integrity (free). Turn on "Enforce" in the Firebase console once it works. */
 object AppCheckInit {
     fun install() {
-        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(PlayIntegrityAppCheckProviderFactory.getInstance())
+        runCatching {
+            FirebaseAppCheck.getInstance().installAppCheckProviderFactory(PlayIntegrityAppCheckProviderFactory.getInstance())
+        }.onFailure { e ->
+            android.util.Log.e("AppCheckInit", "Failed to install Play Integrity App Check provider", e)
+        }
     }
 }

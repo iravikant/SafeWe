@@ -60,7 +60,7 @@ class GeofenceManager @Inject constructor(
 
     fun stop() {
         job?.cancel(); job = null
-        client.removeGeofences(pendingIntent)
+        runCatching { client.removeGeofences(pendingIntent) }
         trackers.clear(); primed.clear(); configs.clear()
     }
 
@@ -75,22 +75,28 @@ class GeofenceManager @Inject constructor(
         }
 
         // circles
-        client.removeGeofences(pendingIntent).addOnCompleteListener {
-            val circles = list.filter { it.shape == "CIRCLE" && it.radius >= 50 }.take(100).map {
-                Geofence.Builder()
-                    .setRequestId(it.id)
-                    .setCircularRegion(it.lat, it.lon, it.radius.toFloat())
-                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT or Geofence.GEOFENCE_TRANSITION_DWELL)
-                    .setLoiteringDelay(5 * 60 * 1000)
-                    .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                    .build()
+        runCatching {
+            client.removeGeofences(pendingIntent).addOnCompleteListener {
+                val circles = list.filter { it.shape == "CIRCLE" && it.radius >= 50 }.take(100).map {
+                    Geofence.Builder()
+                        .setRequestId(it.id)
+                        .setCircularRegion(it.lat, it.lon, it.radius.toFloat())
+                        .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT or Geofence.GEOFENCE_TRANSITION_DWELL)
+                        .setLoiteringDelay(5 * 60 * 1000)
+                        .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                        .build()
+                }
+                if (circles.isNotEmpty()) {
+                    val req = GeofencingRequest.Builder()
+                        .setInitialTrigger(0) // no synthetic events on registration
+                        .addGeofences(circles).build()
+                    client.addGeofences(req, pendingIntent).addOnFailureListener { e ->
+                        android.util.Log.e("GeofenceManager", "Failed to add geofences", e)
+                    }
+                }
             }
-            if (circles.isNotEmpty()) {
-                val req = GeofencingRequest.Builder()
-                    .setInitialTrigger(0) // no synthetic events on registration
-                    .addGeofences(circles).build()
-                client.addGeofences(req, pendingIntent)
-            }
+        }.onFailure { e ->
+            android.util.Log.e("GeofenceManager", "Failed to remove geofences before update", e)
         }
     }
 

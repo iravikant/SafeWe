@@ -243,7 +243,7 @@ fun ErrorBanner(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun GradientButton(
     text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
-    enabled: Boolean = true, loading: Boolean = false, icon: ImageVector? = null
+    enabled: Boolean = true, loading: Boolean = false, icon: ImageVector? = null, height: Dp = 54.dp
 ) {
     val dark = LocalDarkTheme.current
     val shape = RoundedCornerShape(16.dp)
@@ -251,7 +251,7 @@ fun GradientButton(
     val bg = if (enabled) Brand.button else Brush.linearGradient(listOf(offColor, offColor))
     val fg = if (enabled) Color.White else if (dark) Color.White.copy(alpha = 0.40f) else Color(0xFF8A8799)
     Box(
-        modifier.height(54.dp).clip(shape).background(bg)
+        modifier.height(height).clip(shape).background(bg)
             .clickable(enabled = enabled && !loading, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {

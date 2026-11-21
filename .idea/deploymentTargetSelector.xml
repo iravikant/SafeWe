@@ -3,11 +3,11 @@
   <component name="deploymentTargetSelector">
     <selectionStates>
       <SelectionState runConfigName="app">
-        <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-11-21T04:40:37.253779200Z">
+        <option name="selectionMode" value="DIALOG" />
+        <DropdownSelection timestamp="2026-11-21T11:05:32.364229300Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="Wireless" identifier="serviceName=adb-fa56dce0-tsieuP" />
+              <DeviceId pluginId="PhysicalDevice" identifier="serial=fa56dce0" />
             </handle>
           </Target>
         </DropdownSelection>
@@ -15,12 +15,12 @@
           <targets>
             <Target type="DEFAULT_BOOT">
               <handle>
-                <DeviceId pluginId="PhysicalDevice" identifier="serial=fa56dce0" />
+                <DeviceId pluginId="PhysicalDevice" identifier="serial=P7VW6LOZPZJBFI6T" />
               </handle>
             </Target>
             <Target type="DEFAULT_BOOT">
               <handle>
-                <DeviceId pluginId="PhysicalDevice" identifier="serial=P7VW6LOZPZJBFI6T" />
+                <DeviceId pluginId="PhysicalDevice" identifier="serial=fa56dce0" />
               </handle>
             </Target>
           </targets>

@@ -94,7 +94,11 @@ class LocationService : Service() {
         val req = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, INTERVAL_MS)
             .setMinUpdateIntervalMillis(INTERVAL_MS / 2)
             .build()
-        fused.requestLocationUpdates(req, callback, Looper.getMainLooper())
+        runCatching {
+            fused.requestLocationUpdates(req, callback, Looper.getMainLooper())
+        }.onFailure { e ->
+            android.util.Log.e("LocationService", "Failed to request location updates from fused provider", e)
+        }
     }
 
     private suspend fun save(loc: android.location.Location) {
